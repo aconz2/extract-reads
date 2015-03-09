@@ -106,8 +106,7 @@ bool is_good_read(std::string &seq, mer_array *ary, unsigned int kmer_length, un
   mer = seq.substr(0, kmer_length);
   size_t i = kmer_length;
   do {
-    mer.get_canonical();
-    if(ary->get_val_for_key(mer, &val)) {
+    if(ary->get_val_for_key(mer.get_canonical(), &val)) {
       count++;
     }
     if(count >= cutoff) {
@@ -176,7 +175,6 @@ int main(int argc, char *argv[]) {
   {
     boost::timer::auto_cpu_timer t(std::cerr, 2);
     std::cerr << "=== Filling jellyfish hash ===" << std::endl;
-    // jellyfish likes c style strings 'n stuff
     std::vector<std::string> in_files;
     in_files.push_back(genes); 
 
