@@ -26,7 +26,12 @@ make
 make install
 ```
 
-Tested with `gcc >= 4.8`, `boost >= 1.5.4`, and `intel tbb >= 2015.0`
-Requires `BOOST_ROOT` and `TBBROOT` to be set in order to compile.
+Tested with:
+  - `gcc >= 4.8`
+  - `boost >= 1.5.4`
+  - `intel tbb >= 2015.0`
+  - `jellyfish >= 2.2`
+Requires `BOOST_ROOT` and `TBBROOT` to be set in order to compile. And 
+`pkg-config` must be able to find the relevant jellyfish files.
 You may change `PREFIX` to change the install location, defaulting to `/usr/local`
 
