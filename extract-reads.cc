@@ -99,7 +99,7 @@ bool is_good_read(std::string &seq, mer_array *ary, unsigned int kmer_length, un
   if(seq.size() < kmer_length) {
     return false;
   }
-  int count = 0;
+  unsigned int count = 0;
   uint64_t val;
   // should eventually make an iterator for this!
   mer_dna mer;
@@ -133,6 +133,7 @@ int main(int argc, char *argv[]) {
   /* default values */
   int counter_length = 7;
   int num_threads = 1;
+  std::string out_dir = "./";
 
   /* manadatory arguments */
   unsigned int kmer_length;
@@ -142,15 +143,16 @@ int main(int argc, char *argv[]) {
   std::vector<std::string> paired_reads;
   std::string genes;
 
-  po::options_description desc("Extract reads which likely appear in reference");
+  po::options_description desc("Extract reads which likely appear in reference. Give one of --single or --paired");
   desc.add_options()
     ("help,h", "Show help message")
-    ("kmer-length,k", po::value<unsigned int>(&kmer_length)->required(), "*Kmer length to use")
-    ("hash-size,s", po::value<unsigned long>(&hash_size)->required(), "*Initial hash table size for Jellyfish (will grow if full)")
-    ("cutoff,c", po::value<unsigned int>(&cutoff)->required(), "*A read with a k-mer which appears >= this is kept")
+    ("kmer-length,k", po::value<unsigned int>(&kmer_length)->required(), "Kmer length to use")
+    ("hash-size,s", po::value<unsigned long>(&hash_size)->required(), "Initial hash table size for Jellyfish (will grow if full)")
+    ("cutoff,c", po::value<unsigned int>(&cutoff)->required(), "A read with a k-mer which appears >= this is kept")
     ("single", po::value<std::string>(&single_reads), "Single fastq file")
     ("paired", po::value<std::vector<std::string> >(&paired_reads)->multitoken(), "Paired reads fastq files. give in order <left> <right>")
     ("reference,r", po::value<std::string>(&genes)->required(), "Reference file, fasta")
+    ("out,o", po::value<std::string>(&out_dir), "Output directory, MUST exist already")
     //("buffer,b", po::value<int>(&buffer_size)->default_value(buffer_size), "Internal! buffer size")
     //("multiplier,m", po::value<int>(&token_multiplier)->default_value(token_multiplier), "Internal! token multiplier")
     ("threads,t", po::value<int>(&num_threads)->default_value(num_threads), "Number of threads to use");
@@ -167,6 +169,10 @@ int main(int argc, char *argv[]) {
   } catch(po::error &e) {
     std::cerr << "ERROR:" << e.what() << std::endl << desc;
     exit(1);
+  }
+
+  if(out_dir[out_dir.length() - 1] != '/') {
+    out_dir += "/";
   }
 
   mer_dna::k(kmer_length);
@@ -202,10 +208,14 @@ int main(int argc, char *argv[]) {
         std::cerr << "Problem opening paired reads file" << std::endl;
         exit(1);
       }
-      std::string out_file_left = paired_reads[0] + ".extracted";
-      std::string out_file_right = paired_reads[1] + ".extracted";
+      std::string out_file_left = out_dir + paired_reads[0] + ".extracted";
+      std::string out_file_right = out_dir + paired_reads[1] + ".extracted";
       std::ofstream ofs_left(out_file_left);
       std::ofstream ofs_right(out_file_right);
+      if(!ofs_left.good() || !ofs_right.good()) {
+        std::cerr << "Problem opening paired reads output file" << std::endl;
+        exit(1);
+      }
       std::istream_iterator<fastq> EOS;
       std::istream_iterator<fastq> iter_left(ifs_left);
       std::istream_iterator<fastq> iter_right(ifs_right);
@@ -226,7 +236,6 @@ int main(int argc, char *argv[]) {
           tbb::filter::serial_out_of_order,
           [&ofs_left, &ofs_right](std::vector<fastq_pair> *buffer) -> void {
             for(fastq_pair pair: *buffer) {
-              std::cerr << pair.get<0>().id << std::endl;
               ofs_left << pair.get<0>();
               ofs_right << pair.get<1>();
             }
@@ -242,8 +251,12 @@ int main(int argc, char *argv[]) {
         std::cerr << "Problem opening single reads file" << std::endl;
         exit(1);
       }
-      std::string out_file = single_reads + ".extracted";
+      std::string out_file = out_dir + single_reads + ".extracted";
       std::ofstream ofs(out_file);
+      if(!ofs.good()) {
+        std::cerr << "Problem opening single reads output file" << std::endl;
+        exit(1);
+      }
       std::istream_iterator<fastq> EOS;
       std::istream_iterator<fastq> ifs_iter(ifs);
       std::ostream_iterator<fastq> ofs_iter(ofs);
