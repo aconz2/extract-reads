@@ -13,6 +13,7 @@
 #include <boost/program_options.hpp>
 #include <boost/iterator/zip_iterator.hpp>
 #include <boost/tuple/tuple.hpp>
+#include <boost/filesystem.hpp>
 
 #include <jellyfish/err.hpp>
 #include <jellyfish/thread_exec.hpp>
@@ -27,6 +28,8 @@
 
 #include "tbb/pipeline.h"
 #include "tbbff.h"
+
+namespace bfs = boost::filesystem;
 
 using jellyfish::mer_dna;
 typedef std::vector<std::string>::iterator string_iter;
@@ -174,6 +177,10 @@ int main(int argc, char *argv[]) {
   if(out_dir[out_dir.length() - 1] != '/') {
     out_dir += "/";
   }
+  if(!bfs::is_directory(bfs::path(out_dir))) {
+    std::cerr << out_dir << " does not exist, please create and retry" << std::endl;
+    exit(1);
+  }
 
   mer_dna::k(kmer_length);
   mer_hash hash(hash_size, mer_dna::k() * 2, counter_length, num_threads, max_reprobe);
@@ -205,15 +212,19 @@ int main(int argc, char *argv[]) {
       ifs_left.open(paired_reads[0]);
       ifs_right.open(paired_reads[1]);
       if(!ifs_left.good() || !ifs_right.good()) {
-        std::cerr << "Problem opening paired reads file" << std::endl;
+        std::cerr << "Problem opening paired reads files:"
+                  << paired_reads[0] << " & "
+                  << paired_reads[1] << std::endl;
         exit(1);
       }
-      std::string out_file_left = out_dir + paired_reads[0] + ".extracted";
-      std::string out_file_right = out_dir + paired_reads[1] + ".extracted";
+      std::string out_file_left = out_dir + bfs::path(paired_reads[0]).filename().string() + ".extracted";
+      std::string out_file_right = out_dir + bfs::path(paired_reads[1]).filename().string() + ".extracted";
       std::ofstream ofs_left(out_file_left);
       std::ofstream ofs_right(out_file_right);
       if(!ofs_left.good() || !ofs_right.good()) {
-        std::cerr << "Problem opening paired reads output file" << std::endl;
+        std::cerr << "Problem opening paired reads output files :"
+                  << out_file_left << " & "
+                  << out_file_right << std::endl;
         exit(1);
       }
       std::istream_iterator<fastq> EOS;
@@ -248,13 +259,13 @@ int main(int argc, char *argv[]) {
       std::ifstream ifs;
       ifs.open(single_reads);
       if(!ifs.good()) {
-        std::cerr << "Problem opening single reads file" << std::endl;
+        std::cerr << "Problem opening single reads file: " << single_reads << std::endl;
         exit(1);
       }
-      std::string out_file = out_dir + single_reads + ".extracted";
+      std::string out_file = out_dir + bfs::path(single_reads).filename().string() + ".extracted";
       std::ofstream ofs(out_file);
       if(!ofs.good()) {
-        std::cerr << "Problem opening single reads output file" << std::endl;
+        std::cerr << "Problem opening single reads output file: " << out_file << std::endl;
         exit(1);
       }
       std::istream_iterator<fastq> EOS;
